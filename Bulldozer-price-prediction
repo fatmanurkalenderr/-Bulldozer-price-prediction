@@ -1,0 +1,168 @@
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+import sklearn
+from sklearn.ensemble import RandomForestRegressor
+from sklearn.metrics import mean_squared_log_error, mean_absolute_error
+from sklearn.model_selection import RandomizedSearchCV
+from sklearn.model_selection import GridSearchCV
+
+
+
+
+df = pd.read_csv('TrainAndValid.csv' ,
+                parse_dates=["saledate"], 
+                low_memory = False)
+                
+df.isna().sum()
+
+ax.scatter(df["saledate"][:2000],df["SalePrice"][:2000]);
+df.head()
+
+df.sort_values(by = ["saledate"],inplace=True, ascending=True)
+df.head(30)
+
+df_new["saleYear"] = df_new.saledate.dt.year
+df_new["saleMonth"] = df_new.saledate.dt.month
+df_new["saleDay"] = df_new.saledate.dt.day
+df_new["saleDayOfYear"] = df_new.saledate.dt.dayofyear
+df_new.drop("saledate",axis=1, inplace=True)
+df_new.head()
+
+
+for label,content in df_new.items():
+    
+  
+    if pd.api.types.is_string_dtype(content):
+      df_new[label] = content.astype("category").cat.as_ordered()
+
+df_new.info()
+
+df_new.to_csv('train_new.csv',
+              index = False)
+for label,value in df_new.items():
+    
+ 
+    
+    if pd.api.types.is_numeric_dtype(value):
+        if pd.isnull(value).sum():
+            df_new[label] = content.fillna(value.median())
+
+df_new.isna().sum()
+
+missing values
+missing = []
+for label in df_new:
+    if df_new[label].isna().sum():
+        missing.append(label)
+        
+
+not_numeric = []
+for label,value in df_new.items():
+    if not pd.api.types.is_numeric_dtype(value):
+        not_numeric.append(label)
+        
+
+for label,value in df_new.items():
+    if not pd.api.types.is_numeric_dtype(value):
+        
+        df_new[label] = pd.Categorical(value).codes+1
+df_new.isna().sum().head(40)
+
+
+x = df_new.drop("SalePrice" , axis=1)
+x
+y = df_new["SalePrice"]
+y
+
+
+np.random.seed(42)
+from sklearn.ensemble import RandomForestRegressor
+model = RandomForestRegressor(n_jobs = -1)
+model.fit(x , y);
+model.score(x,y)
+
+
+valid_set = df_new[df_new.saleYear==2012]
+
+train_set = df_new[df_new.saleYear!= 2012]
+
+
+x_train , y_train = train_set.drop("SalePrice",axis=1), train_set.SalePrice
+x_valid, y_valid = valid_set.drop("SalePrice", axis=1), valid_set.SalePrice
+# creating rsmle function to return the root mean square log error
+
+def rmsle(y_test,y_preds):
+    return np.sqrt(mean_squared_log_error(y_test,y_preds))
+
+
+def show_scores(model):
+    train_preds = model.predict(x_train)
+    val_preds = model.predict(x_valid)
+    scores = {"Valid RSMLE": rmsle(y_valid, val_preds),
+             "Training RSMLE": rmsle(y_train,train_preds)}
+    return scores
+model.fit(x_train,y_train)
+show_scores(model)
+
+
+grid = {"n_estimators": np.arange(10,100,10),
+          "max_depth": [None,3,5,10],
+          "min_samples_split": np.arange(2,20,2),
+          "min_samples_leaf": np.arange(1,20,2),
+          "max_features": [0.5,1,"sqrt","auto"],
+          "max_samples": [10000]}
+
+
+gs_model = RandomizedSearchCV(RandomForestRegressor(n_jobs=-1,
+                                                   random_state=42),
+                             param_distributions=grid,
+                             n_iter = 10,
+                             cv=5,
+                             verbose=True)
+gs_model.fit(x_train,y_train)
+gs_model.best_params_
+show_scores(gs_model)
+
+grid_2 = {"n_estimators": [90],
+          "max_depth": [10,15],
+          "min_samples_split": [4,6,8],
+          "min_samples_leaf": [15],
+          "max_features": ["sqrt","auto"],
+          "max_samples": [10000]}
+
+gs_model_2 = GridSearchCV(RandomForestRegressor(n_jobs =-1,
+                                                random_state=42),
+                          param_grid = grid_2,
+                          cv=5,
+                          verbose=True)
+
+gs_model_2.fit(x_train,y_train)
+gs_model_2.best_params_
+show_scores(gs_model_2)
+
+Predictions on test data
+test_set = pd.read_csv("Test.csv",
+                     parse_dates=["saledate"])
+def preprocess(df):
+    df["saleYear"] = df.saledate.dt.year
+    df["saleMonth"] = df.saledate.dt.month
+    df["saleDay"] = df.saledate.dt.day
+    df["saleDayOfYear"] = df.saledate.dt.dayofyear
+    df.drop("saledate",axis=1, inplace=True)
+    for label,value in df.items():
+        if pd.api.types.is_numeric_dtype(value):
+            if pd.isnull(value).sum():
+                df[label] = value.fillna(value.median())
+        elif not pd.api.types.is_numeric_dtype(value):
+            df[label] = pd.Categorical(value).codes+1
+            
+    return df
+test_set = preprocess(test_set)
+#predict the price of bulldozers on test dataset
+test_preds = gs_model_2.predict(test_set)
+df_preds = pd.DataFrame()
+df_preds["SalesID"] = test_set["SalesID"]
+df_preds["SalesPrice"] = test_preds
+df_preds
+df_preds.to_csv("test_predition.csv")
